@@ -38,7 +38,7 @@ func (a *API) getResponse(url string) (res *http.Response, err error) {
 }
 
 func (a *API) GetUser() (u CurrentUser, err error) {
-	r, err := a.getResponse(fmt.Sprintf("https://api.github.com/%s", "user"))
+	r, err := a.getResponse("https://api.github.com/user")
 	if err != nil {
 		return
 	}
@@ -52,7 +52,7 @@ func (a *API) GetUser() (u CurrentUser, err error) {
 
 	fmt.Println(u)
 
-	repos, err := u.Repos()
+	repos, err := u.AllRepos()
 	for _, r := range repos {
 		fmt.Println(r)
 	}
@@ -69,6 +69,16 @@ type CurrentUser struct {
 
 func (u *CurrentUser) Repos() (repos []*Repository, err error) {
 	r, err := u.api.getResponse(u.ReposUrl)
+	if err != nil {
+		return
+	}
+	defer r.Body.Close()
+	err = json.NewDecoder(r.Body).Decode(&repos)
+	return
+}
+
+func (u *CurrentUser) AllRepos() (repos []*Repository, err error) {
+	r, err := u.api.getResponse("https://api.github.com/user/repos")
 	if err != nil {
 		return
 	}
