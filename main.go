@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -18,12 +19,28 @@ func main() {
 
 	client := NewGithubClient(os.Args[1], os.Getenv("GITHUB_TOKEN"))
 
-	opt := &github.RepositoryListOptions{Type: "owner", Sort: "updated", Direction: "desc"}
-	repos, _, err := client.Repositories.List(context.Background(), "", opt)
-	if err != nil {
-		log.Fatal(err)
+	opt := &github.RepositoryListOptions{
+		Sort:        "updated",
+		Direction:   "desc",
+		ListOptions: github.ListOptions{PerPage: 10},
 	}
-	fmt.Println(repos)
+	var allRepos []*github.Repository
+	for {
+		repos, resp, err := client.Repositories.List(context.Background(), "", opt)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println(len(repos))
+
+		allRepos = append(allRepos, repos...)
+		if resp.NextPage == 0 {
+			break
+		}
+		opt.Page = resp.NextPage
+	}
+	json.NewEncoder(os.Stdout).Encode(&allRepos)
+
+	// fmt.Println(repos)
 }
 
 func NewGithubClient(username string, token string) *github.Client {
