@@ -18,8 +18,10 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
+	"github.com/lucassabreu/github-journaling-aggregator/report"
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -91,17 +93,16 @@ var RootCmd = &cobra.Command{
 			return fmt.Errorf("can't mix the beginning flags")
 		}
 
-		if len(args) != 1 {
+		if len(args) != 1 || strings.TrimSpace(args[0]) == "" {
 			return fmt.Errorf("username is required")
 		}
 		return nil
 	},
 	Run: func(cmd *cobra.Command, args []string) {
+		username = args[0]
 		var beginningDate time.Time = time.Now()
 
 		switch dateFilterType {
-		case TODAY:
-			beginningDate = time.Now()
 		case YESTERDAY:
 			beginningDate = time.Now().AddDate(0, 0, -1)
 		case LAST_WEEK:
@@ -118,12 +119,12 @@ var RootCmd = &cobra.Command{
 
 		y, m, d := beginningDate.Date()
 		beginningDate = time.Date(y, m, d, 0, 0, 0, 0, time.Local)
-		fmt.Println(beginningDate)
-	},
-}
 
-func getBeginningDate(cmd *cobra.Command) *time.Time {
-	return nil
+		err := report.RunReportGen(username, token, beginningDate)
+		if err != nil {
+			log.Fatal(err)
+		}
+	},
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -140,7 +141,7 @@ func init() {
 
 	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.github-journaling-aggregator.yaml)")
 	RootCmd.PersistentFlags().StringVar(&token, "token", "", "github access token (or user password), if not set $GITHUB_TOKEN will be used")
-	RootCmd.PersistentFlags().BoolVarP(&today, "today", "t", false, "use today as beginning date")
+	RootCmd.PersistentFlags().BoolVarP(&today, "today", "t", false, "use today as beginning date (default)")
 	RootCmd.PersistentFlags().BoolVarP(&yesterday, "yesterday", "y", false, "use yesterday as beginning date")
 	RootCmd.PersistentFlags().BoolVarP(&lastWeek, "last-week", "w", false, "use the last sunday as beginning date")
 	RootCmd.PersistentFlags().IntVarP(&days, "days", "d", 0, "use today as beginning date")
