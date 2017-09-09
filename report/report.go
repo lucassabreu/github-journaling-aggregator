@@ -16,7 +16,7 @@ func RunReportGen(username string, token string, beginning time.Time) error {
 
 	events := getAllEventsSince(done, client, username, beginning)
 	for e := range events {
-		fmt.Println(e.CreatedAt, beginning)
+		fmt.Println(e)
 	}
 
 	return nil
