@@ -21,6 +21,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/lucassabreu/github-journaling-aggregator/formatter"
+	"github.com/lucassabreu/github-journaling-aggregator/githubclient"
 	"github.com/lucassabreu/github-journaling-aggregator/report"
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
@@ -120,10 +122,11 @@ var RootCmd = &cobra.Command{
 		y, m, d := beginningDate.Date()
 		beginningDate = time.Date(y, m, d, 0, 0, 0, 0, time.Local)
 
-		err := report.RunReportGen(username, token, beginningDate)
-		if err != nil {
-			log.Fatal(err)
-		}
+		client := githubclient.NewGithubClient(username, token, nil)
+		r := report.New(client, username, beginningDate)
+		f := formatter.NewRaw(os.Stdout)
+		r.AttachFormatter(&f)
+		r.Run()
 	},
 }
 

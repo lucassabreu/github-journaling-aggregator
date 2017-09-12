@@ -7,149 +7,77 @@ import (
 	"time"
 
 	"github.com/google/go-github/github"
-	"github.com/lucassabreu/github-journaling-aggregator/githubclient"
 )
 
-func RunReportGen(username string, token string, beginning time.Time) error {
-
-	r := report{
-		client:    githubclient.NewGithubClient(username, token, nil),
-		username:  username,
-		beginning: beginning,
-
-		githubEventsChan: make(chan *github.Event),
-	}
-
-	return r.run()
+type Formatter interface {
+	Format(*github.Event)
+	FormatError(error)
+	Close()
 }
 
-type report struct {
-	client    *github.Client
-	username  string
-	beginning time.Time
-
-	err              error
-	done             chan struct{}
-	githubEventsChan chan *github.Event
-	reportEventsChan chan *reportEvent
-	warningsChan     chan error
-	warnings         []error
+type Report struct {
+	client     *github.Client
+	username   string
+	beginning  time.Time
+	formatters []Formatter
 }
 
-func (r *report) run() error {
-	defer close(r.warningsChan)
-	r.done = make(chan struct{})
-
-	r.warningsChan = make(chan error)
-	r.warnings = make([]error, 0)
-
-	r.githubEventsChan = make(chan *github.Event)
-	r.reportEventsChan = make(chan *reportEvent)
-
-	go r.warningCollect()
-	go r.fetchEvents()
-	go r.processEvents()
-
-	for re := range r.reportEventsChan {
-		fmt.Println(re)
-	}
-
-	<-r.done
-	return r.err
-}
-
-func (r *report) warningCollect() {
-	for w := range r.warningsChan {
-		r.warnings = append(r.warnings, w)
+func New(client *github.Client, username string, beginning time.Time) Report {
+	return Report{
+		client:     client,
+		username:   username,
+		beginning:  beginning,
+		formatters: make([]Formatter, 0),
 	}
 }
 
-func (r *report) processEvents() {
-	defer func() {
-		close(r.reportEventsChan)
-		close(r.done)
-	}()
-
-	for {
-		select {
-		case ge := <-r.githubEventsChan:
-			if ge == nil {
-				continue
-			}
-
-			if ge.Type == nil {
-				fmt.Println(ge)
-				return
-			}
-
-			p, err := ge.ParsePayload()
-			if err != nil {
-				r.warningsChan <- err
-				continue
-			}
-
-			switch p := p.(type) {
-			case github.CreateEvent:
-				go r.processCreateEvent(ge, p)
-			case github.IssueCommentEvent:
-				go r.processIssueCommentEvent(ge, p)
-			case github.IssuesEvent:
-				go r.processIssuesEvent(ge, p)
-			case github.MemberEvent:
-				go r.processMemberEvent(ge, p)
-			case github.MilestoneEvent:
-				go r.processMilestoneEvent(ge, p)
-			case github.PublicEvent:
-				go r.processPublicEvent(ge, p)
-			case github.PullRequestEvent:
-				go r.processPullRequestEvent(ge, p)
-			case github.PullRequestReviewCommentEvent:
-				go r.processPullRequestReviewCommentEvent(ge, p)
-			case github.PushEvent:
-				go r.processPushEvent(ge, p)
-			default:
-				go r.processOtherEvents(ge)
-			}
-		case <-r.done:
-			return
-		}
-	}
-
-	close(r.done)
+func (r *Report) AttachFormatter(f Formatter) {
+	r.formatters = append(r.formatters, f)
 }
 
-func (r *report) fetchEvents() {
+func (r *Report) format(e *github.Event) {
+	for _, f := range r.formatters {
+		f.Format(e)
+	}
+}
+
+func (r *Report) formatError(err error) {
+	for _, f := range r.formatters {
+		f.FormatError(err)
+	}
+}
+
+func (r *Report) Run() {
+	r.getEvents()
+	for _, f := range r.formatters {
+		f.Close()
+	}
+}
+
+func (r *Report) getEvents() {
 	beginning := r.beginning.Add(-24 * time.Hour)
 	beginning = time.Date(beginning.Year(), beginning.Month(), beginning.Day(), 23, 59, 59, int(time.Second)-1, time.Local)
 
-	defer close(r.githubEventsChan)
-
-	opt := &github.ListOptions{
-		PerPage: 10,
-	}
+	opt := &github.ListOptions{PerPage: 10}
 	for {
 		events, resp, err := r.client.Activity.ListEventsPerformedByUser(context.Background(), r.username, false, opt)
 
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
-			break
+			return
 		}
 
 		for _, e := range events {
 			if e.CreatedAt.Before(beginning) {
 				return
 			}
-
-			select {
-			case r.githubEventsChan <- e:
-			case <-r.done:
-				return
-			}
+			r.format(e)
 		}
 
 		if resp.NextPage == 0 {
-			break
+			return
 		}
 		opt.Page = resp.NextPage
 	}
+
 }
