@@ -56,10 +56,10 @@ func (r *Raw) format(e *github.Event) {
 	case *github.IssueCommentEvent:
 		r.print(e, fmt.Sprintf(
 			"%v comment in issue %v#%d with content: \"%v\"",
-			p.Action,
-			e.Repo.Name,
-			p.Issue.Number,
-			p.Comment.Body))
+			*p.Action,
+			*e.Repo.Name,
+			*p.Issue.Number,
+			*p.Comment.Body))
 
 	case *github.IssuesEvent:
 		if p.Action == nil {
