@@ -61,7 +61,7 @@ var RootCmd = &cobra.Command{
 	Will receive a username, access token and a beginning date and generate a report based on the users activity feed on GitHub`,
 	Args: func(cmd *cobra.Command, args []string) error {
 		if token == "" {
-			return fmt.Errorf("token must be informmed or GITHUB_TOKEN enviroment var set")
+			return fmt.Errorf("token must be informmed or GITHUB_TOKEN environment var set")
 		}
 
 		timeParamCount := 0

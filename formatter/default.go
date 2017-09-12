@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"sort"
+	"strings"
 
 	"github.com/google/go-github/github"
 )
@@ -75,7 +76,7 @@ func (r *Raw) format(e *github.Event) {
 
 	case *github.IssueCommentEvent:
 		r.print(e, fmt.Sprintf(
-			"%s comment in issue %s#%s with content: \"%s\"",
+			"%v comment in issue %v#%d with content: \"%v\"",
 			p.Action,
 			e.Repo.Name,
 			p.Issue.Number,
@@ -101,7 +102,7 @@ func (r *Raw) format(e *github.Event) {
 
 		if action == "closed" {
 			action = "merged"
-			if *p.PullRequest.Merged == false {
+			if !*p.PullRequest.Merged {
 				action = "canceled"
 			}
 		}
@@ -114,14 +115,13 @@ func (r *Raw) format(e *github.Event) {
 	// case *github.PullRequestReviewCommentEvent:
 
 	case *github.PushEvent:
-		messages := make([]string, 0, len(p.Commits))
+		r.print(e, fmt.Sprintf("pushed %d commits to %s", len(p.Commits), *p.Ref))
+
 		for _, c := range p.Commits {
-			if c.Message != nil {
-				messages = append(messages, *c.Message)
-			}
+			message := strings.Split(*c.Message, "\n")[0]
+			r.print(e, fmt.Sprintf("pushed commit %v with message: %v", c.SHA, message))
 		}
 
-		r.print(e, fmt.Sprintf("pushed %d commits to %s", len(p.Commits), *p.Ref))
 	// ignore
 	case *github.DeleteEvent:
 	default:
