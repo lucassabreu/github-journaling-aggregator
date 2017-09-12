@@ -55,7 +55,7 @@ func (r *Raw) Format(e *github.Event) {
 }
 
 func (r *Raw) print(e *github.Event, what string) {
-	fmt.Fprintf(r.w, "[%v]\t[%v]\t%s\n", *e.Repo.Name, e.CreatedAt, what)
+	fmt.Fprintf(r.w, "[%v]\t[%s]\t%s\n", *e.Repo.Name, e.CreatedAt.Format("2006-01-02 15:04:05"), what)
 }
 
 func (r *Raw) format(e *github.Event) {
@@ -119,7 +119,7 @@ func (r *Raw) format(e *github.Event) {
 
 		for _, c := range p.Commits {
 			message := strings.Split(*c.Message, "\n")[0]
-			r.print(e, fmt.Sprintf("pushed commit %v with message: %v", c.SHA, message))
+			r.print(e, fmt.Sprintf("pushed commit %s with message: %v", *c.SHA, message))
 		}
 
 	// ignore
