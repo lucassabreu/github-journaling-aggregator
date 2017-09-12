@@ -3,33 +3,13 @@ package formatter
 import (
 	"fmt"
 	"io"
-	"sort"
 	"strings"
 
 	"github.com/google/go-github/github"
 )
 
-type eventSorter struct {
-	events []*github.Event
-}
-
-func (es *eventSorter) Len() int {
-	return len(es.events)
-}
-
-func (es *eventSorter) Swap(i, j int) {
-	es.events[i], es.events[j] = es.events[j], es.events[i]
-}
-
-func (es *eventSorter) Less(i, j int) bool {
-	return es.events[i].CreatedAt.Before(*es.events[j].CreatedAt)
-}
-
-func (es *eventSorter) Sort() {
-	sort.Sort(es)
-}
-
 type Raw struct {
+	sorter EventSorter
 	w      io.Writer
 	events []*github.Event
 }
@@ -42,8 +22,7 @@ func NewRaw(w io.Writer) Raw {
 }
 
 func (r *Raw) Close() {
-	es := eventSorter{r.events}
-	es.Sort()
+	r.sorter.Sort(r.events)
 
 	for _, e := range r.events {
 		r.format(e)
