@@ -170,7 +170,10 @@ func initConfig() {
 	}
 
 	if token == "" {
-		token = os.Getenv("GITHUB_TOKEN")
+		var ok bool
+		if token, ok = os.LookupEnv("GITHUB_TOKEN"); !ok {
+			token = ""
+		}
 	}
 
 	viper.AutomaticEnv() // read in environment variables that match
