@@ -6,7 +6,7 @@ Once GitHub is the main tool for many developers to control theirs source and is
 Install
 -------
 
-For now this cli is only available to install by `go get`, when the main GitHub common events were coded in this tool then will be releases. But for now to install (ant update) it use:
+For now this cli is only available to install by `go get`, when the main GitHub common events were coded in this tool then will be releases. But for now to install (and update) it use:
 
 ```sh
 go get -u github.com/lucassabreu/github-journaling-aggregator
