@@ -11,7 +11,6 @@ import (
 )
 
 type CSV struct {
-	sorter   MessageSorter
 	w        *csv.Writer
 	messages []report.Message
 }
@@ -24,8 +23,6 @@ func NewCSV(w io.Writer) CSV {
 }
 
 func (csv *CSV) Close() {
-	csv.sorter.Sort(csv.messages)
-
 	for _, m := range csv.messages {
 		csv.w.Write([]string{
 			*m.Repo.Name,

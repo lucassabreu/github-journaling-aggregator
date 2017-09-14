@@ -11,7 +11,6 @@ import (
 )
 
 type Table struct {
-	sorter   MessageSorter
 	tw       *tablewriter.Table
 	messages []report.Message
 	errors   []error
@@ -43,8 +42,6 @@ func NewTable(w io.Writer) Table {
 }
 
 func (t *Table) Close() {
-	t.sorter.Sort(t.messages)
-
 	var wM, wR int = 0, 0
 	t.tw.SetHeader([]string{"Repository", "Created At", "What"})
 	lines := make([][]string, len(t.messages))
