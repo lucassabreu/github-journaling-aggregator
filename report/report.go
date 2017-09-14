@@ -144,10 +144,20 @@ func (r *Report) forward(e *github.Event) error {
 		}
 		r.format(Message{*e, p, fmt.Sprintf("%s the pull request %s#%d (%s)", action, *e.Repo.Name, *p.PullRequest.Number, *p.PullRequest.Title)})
 
-	// case *github.MemberEvent:
-	// case *github.MilestoneEvent:
-	// case *github.PublicEvent:
-	// case *github.PullRequestReviewCommentEvent:
+		// case *github.MemberEvent:
+		// case *github.MilestoneEvent:
+		// case *github.PublicEvent:
+	case *github.PullRequestReviewCommentEvent:
+		if p.Action == nil {
+			break
+		}
+		r.format(Message{*e, p, fmt.Sprintf(
+			"%s a comment in the pull request %s#%d with \"%s\"",
+			*p.Action,
+			*e.Repo.Name,
+			*p.PullRequest.Number,
+			*p.Comment.Body,
+		)})
 
 	case *github.PushEvent:
 		for _, c := range p.Commits {
