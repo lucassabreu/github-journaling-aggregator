@@ -48,6 +48,8 @@ var (
 	days           int
 	date           string
 
+	formatterType string
+
 	username string
 	token    string
 )
@@ -59,47 +61,7 @@ var RootCmd = &cobra.Command{
 	Long: `Create a simple report using your activity feed at GitHub.
 
 	Will receive a username, access token and a beginning date and generate a report based on the users activity feed on GitHub`,
-	Args: func(cmd *cobra.Command, args []string) error {
-		if token == "" {
-			return fmt.Errorf("token must be informmed or GITHUB_TOKEN environment var set")
-		}
-
-		timeParamCount := 0
-
-		if today {
-			timeParamCount++
-			dateFilterType = TODAY
-		}
-
-		if yesterday {
-			timeParamCount++
-			dateFilterType = YESTERDAY
-		}
-
-		if lastWeek {
-			timeParamCount++
-			dateFilterType = LAST_WEEK
-		}
-
-		if days > 0 {
-			timeParamCount++
-			dateFilterType = DAYS
-		}
-
-		if date != "" {
-			timeParamCount++
-			dateFilterType = DATE
-		}
-
-		if timeParamCount > 1 {
-			return fmt.Errorf("can't mix the beginning flags")
-		}
-
-		if len(args) != 1 || strings.TrimSpace(args[0]) == "" {
-			return fmt.Errorf("username is required")
-		}
-		return nil
-	},
+	Args: validateArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 		username = args[0]
 		var beginningDate time.Time = time.Now()
@@ -124,8 +86,13 @@ var RootCmd = &cobra.Command{
 
 		client := githubclient.NewGithubClient(username, token, nil)
 		r := report.New(client, username, beginningDate)
-		f := formatter.NewRaw(os.Stdout)
-		r.AttachFormatter(&f)
+
+		f, err := getFormatter()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		r.AttachFormatter(f)
 		r.Run()
 	},
 }
@@ -139,9 +106,53 @@ func Execute() {
 	}
 }
 
+const (
+	FORMAT_DEFAULT    = FORMAT_RAW
+	FORMAT_RAW        = "raw"
+	FORMAT_TABLE      = "table"
+	FORMAT_MD         = "md"
+	FORMAT_GROUP_LINE = "groupline"
+	FORMAT_CSV        = "csv"
+)
+
+var formats = []string{
+	FORMAT_RAW,
+	FORMAT_TABLE,
+	FORMAT_MD,
+	FORMAT_GROUP_LINE,
+	FORMAT_CSV,
+}
+
+func getFormatter() (f report.Formatter, err error) {
+	switch formatterType {
+	case FORMAT_CSV:
+		t := formatter.NewCSV(os.Stdout)
+		f = &t
+	case FORMAT_GROUP_LINE:
+		t := formatter.NewGroupLineTable(os.Stdout)
+		f = &t
+	case FORMAT_MD:
+		t := formatter.NewMDTable(os.Stdout)
+		f = &t
+	case FORMAT_TABLE:
+		t := formatter.NewTable(os.Stdout)
+		f = &t
+	case FORMAT_RAW:
+		r := formatter.NewRaw(os.Stdout)
+		f = &r
+	default:
+		err = fmt.Errorf("Format %s is not valid !", formatterType)
+	}
+	return
+}
+
 func init() {
 	cobra.OnInitialize(initConfig)
 
+	RootCmd.PersistentFlags().StringVarP(&formatterType, "format", "f", FORMAT_DEFAULT, fmt.Sprintf(
+		"how the events should be displayed, the options are: %s",
+		strings.Join(formats, ", "),
+	))
 	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.github-journaling-aggregator.yaml)")
 	RootCmd.PersistentFlags().StringVar(&token, "token", "", "github access token (or user password), if not set $GITHUB_TOKEN will be used")
 	RootCmd.PersistentFlags().BoolVarP(&today, "today", "t", false, "use today as beginning date (default)")
@@ -149,6 +160,48 @@ func init() {
 	RootCmd.PersistentFlags().BoolVarP(&lastWeek, "last-week", "w", false, "use the last sunday as beginning date")
 	RootCmd.PersistentFlags().IntVarP(&days, "days", "d", 0, "use today as beginning date")
 	RootCmd.PersistentFlags().StringVar(&date, "date", "", "set a beginning date (format 2017-12-31)")
+}
+
+func validateArgs(cmd *cobra.Command, args []string) error {
+	if token == "" {
+		return fmt.Errorf("token must be informmed or GITHUB_TOKEN environment var set")
+	}
+
+	timeParamCount := 0
+
+	if today {
+		timeParamCount++
+		dateFilterType = TODAY
+	}
+
+	if yesterday {
+		timeParamCount++
+		dateFilterType = YESTERDAY
+	}
+
+	if lastWeek {
+		timeParamCount++
+		dateFilterType = LAST_WEEK
+	}
+
+	if days > 0 {
+		timeParamCount++
+		dateFilterType = DAYS
+	}
+
+	if date != "" {
+		timeParamCount++
+		dateFilterType = DATE
+	}
+
+	if timeParamCount > 1 {
+		return fmt.Errorf("can't mix the beginning flags")
+	}
+
+	if len(args) != 1 || strings.TrimSpace(args[0]) == "" {
+		return fmt.Errorf("username is required")
+	}
+	return nil
 }
 
 // initConfig reads in config file and ENV variables if set.

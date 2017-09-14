@@ -3,6 +3,7 @@ package formatter
 import (
 	"fmt"
 	"io"
+	"os"
 	"time"
 
 	"github.com/lucassabreu/github-journaling-aggregator/report"
@@ -38,5 +39,5 @@ func (r *Raw) print(m report.Message) {
 }
 
 func (r *Raw) FormatError(err error) {
-	fmt.Fprintln(r.w, err)
+	fmt.Fprintln(os.Stderr, err)
 }
