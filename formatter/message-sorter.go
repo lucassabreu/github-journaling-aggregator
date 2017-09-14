@@ -1,8 +1,6 @@
 package formatter
 
 import (
-	"sort"
-
 	"github.com/lucassabreu/github-journaling-aggregator/report"
 )
 
@@ -24,5 +22,5 @@ func (es *MessageSorter) Less(i, j int) bool {
 
 func (es *MessageSorter) Sort(messages []report.Message) {
 	es.messages = messages
-	sort.Sort(es)
+	//	sort.Sort(es)
 }

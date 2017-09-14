@@ -150,9 +150,10 @@ func (r *Report) forward(e *github.Event) error {
 	// case *github.PullRequestReviewCommentEvent:
 
 	case *github.PushEvent:
-		r.format(Message{*e, p, fmt.Sprintf("pushed %d commits to %s", len(p.Commits), *p.Ref)})
-
 		for _, c := range p.Commits {
+			if !*c.Distinct {
+				continue
+			}
 			r.format(Message{
 				*e,
 				p,

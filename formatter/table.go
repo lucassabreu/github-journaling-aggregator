@@ -62,8 +62,11 @@ func (t *Table) Close() {
 		}
 	}
 
-	if width, _, err := terminal.GetSize(int(os.Stdin.Fd())); err == nil && width < wM {
-		wM = width - 30 - wR
+	if width, _, err := terminal.GetSize(int(os.Stdin.Fd())); err == nil {
+		width = width - 30 - wR
+		if width < wM {
+			wM = width
+		}
 	}
 
 	t.tw.SetColWidth(wM)
