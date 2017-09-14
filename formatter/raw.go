@@ -11,6 +11,7 @@ import (
 
 type Raw struct {
 	w        io.Writer
+	sorter   Sorter
 	messages []report.Message
 }
 
@@ -22,6 +23,7 @@ func NewRaw(w io.Writer) Raw {
 }
 
 func (r *Raw) Close() {
+	r.messages = r.sorter.SortByCreatedAt(r.messages)
 	for _, m := range r.messages {
 		r.print(m)
 	}

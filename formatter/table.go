@@ -12,13 +12,13 @@ import (
 
 type Table struct {
 	tw       *tablewriter.Table
+	sorter   Sorter
 	messages []report.Message
 	errors   []error
 }
 
 func NewGroupLineTable(w io.Writer) Table {
 	t := NewTable(w)
-	t.tw.SetHeader([]string{"Repository", "Created At", "What"})
 	t.tw.SetAutoMergeCells(true)
 	t.tw.SetRowLine(true)
 	return t
@@ -26,7 +26,6 @@ func NewGroupLineTable(w io.Writer) Table {
 
 func NewMDTable(w io.Writer) Table {
 	t := NewTable(w)
-	t.tw.SetHeader([]string{"Repository", "Created At", "What"})
 	t.tw.SetBorders(tablewriter.Border{Left: true, Top: false, Right: true, Bottom: false})
 	t.tw.SetCenterSeparator("|")
 	return t
@@ -43,7 +42,10 @@ func NewTable(w io.Writer) Table {
 
 func (t *Table) Close() {
 	var wM, wR int = 0, 0
-	t.tw.SetHeader([]string{"Repository", "Created At", "What"})
+	t.tw.SetHeader([]string{"Created At", "Repository", "What"})
+
+	t.messages = t.sorter.SortByCreatedAt(t.messages)
+
 	lines := make([][]string, len(t.messages))
 	for i, m := range t.messages {
 		if wM < len(m.Message) {

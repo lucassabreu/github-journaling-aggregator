@@ -4,6 +4,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 
 type CSV struct {
 	w        *csv.Writer
+	sorter   Sorter
 	messages []report.Message
 }
 
@@ -23,12 +25,16 @@ func NewCSV(w io.Writer) CSV {
 }
 
 func (csv *CSV) Close() {
+	csv.messages = csv.sorter.SortByCreatedAt(csv.messages)
 	for _, m := range csv.messages {
-		csv.w.Write([]string{
+		err := csv.w.Write([]string{
 			*m.Repo.Name,
 			m.CreatedAt.In(time.Local).Format("2006-01-02 15:04:05"),
 			m.Message,
 		})
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 	csv.w.Flush()
 }
