@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/go-github/github"
+	"github.com/lucassabreu/github-journaling-aggregator/filter"
 )
 
 type Message struct {
@@ -29,6 +30,7 @@ type Report struct {
 	username   string
 	beginning  time.Time
 	formatters []Formatter
+	filter     filter.Filter
 }
 
 // New Report
@@ -38,12 +40,17 @@ func New(client *github.Client, username string, beginning time.Time) Report {
 		username:   username,
 		beginning:  beginning,
 		formatters: make([]Formatter, 0),
+		filter:     filter.DefaultFilter,
 	}
 }
 
 // AttachFormatter to receive the messages
 func (r *Report) AttachFormatter(f Formatter) {
 	r.formatters = append(r.formatters, f)
+}
+
+func (r *Report) SetFilter(filter filter.Filter) {
+	r.filter = filter
 }
 
 func (r *Report) Run() {
@@ -70,6 +77,11 @@ func (r *Report) getEvents() {
 			if e.CreatedAt.Before(beginning) {
 				return
 			}
+
+			if !r.filter.Filter(e) {
+				continue
+			}
+
 			err := r.forward(e)
 			if err != nil {
 				r.formatError(err)
