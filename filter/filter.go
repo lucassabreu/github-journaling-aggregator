@@ -1,6 +1,10 @@
 package filter
 
-import "github.com/google/go-github/github"
+import (
+	"regexp"
+
+	"github.com/google/go-github/github"
+)
 
 // Filter will control if the github.Event should or not be shown
 type Filter interface {
@@ -21,8 +25,8 @@ type FilterGroup struct {
 	filters []Filter
 }
 
-func NewFilterGroup(filters []Filter) FilterGroup {
-	return FilterGroup{
+func NewFilterGroup(filters []Filter) *FilterGroup {
+	return &FilterGroup{
 		filters: filters,
 	}
 }
@@ -32,19 +36,34 @@ func (fg *FilterGroup) Append(f Filter) {
 	fg.filters = append(fg.filters, f)
 }
 
-// Filter will call the other filters in the group, if one of then returns false, then the FilterGroup will return false, otherwise true
+func (fg *FilterGroup) Count() int {
+	return len(fg.filters)
+}
+
+// Filter will call the other filters in the group, if one of then returns true, then the FilterGroup will return true, otherwise false
 func (fg *FilterGroup) Filter(e *github.Event) bool {
 	for _, f := range fg.filters {
-		if !f.Filter(e) {
-			return false
+		if f.Filter(e) {
+			return true
 		}
 	}
 
-	return true
+	return false
 }
 
 type FilterFunc func(e *github.Event) bool
 
 func (ff FilterFunc) Filter(e *github.Event) bool {
 	return ff(e)
+}
+
+type RepositoryNameRegExpFilter struct {
+	r *regexp.Regexp
+}
+
+func NewRepositoryNameRegExpFilter(r *regexp.Regexp) *RepositoryNameRegExpFilter {
+	return &RepositoryNameRegExpFilter{r}
+}
+func (f *RepositoryNameRegExpFilter) Filter(e *github.Event) bool {
+	return f.r.MatchString(*e.Repo.Name)
 }

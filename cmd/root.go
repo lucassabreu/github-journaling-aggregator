@@ -15,18 +15,22 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
+	"github.com/google/go-github/github"
+	"github.com/lucassabreu/github-journaling-aggregator/filter"
 	"github.com/lucassabreu/github-journaling-aggregator/formatter"
-	"github.com/lucassabreu/github-journaling-aggregator/githubclient"
 	"github.com/lucassabreu/github-journaling-aggregator/report"
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"golang.org/x/oauth2"
 )
 
 const (
@@ -47,8 +51,6 @@ var (
 	lastWeek       bool
 	days           int
 	date           string
-
-	formatterType string
 
 	username string
 	token    string
@@ -84,7 +86,10 @@ var RootCmd = &cobra.Command{
 		y, m, d := beginningDate.Date()
 		beginningDate = time.Date(y, m, d, 0, 0, 0, 0, time.Local)
 
-		client := githubclient.NewGithubClient(username, token, nil)
+		ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
+		tc := oauth2.NewClient(context.Background(), ts)
+
+		client := github.NewClient(tc)
 		r := report.New(client, username, beginningDate)
 
 		f, err := getFormatter()
@@ -92,6 +97,7 @@ var RootCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 
+		r.SetFilter(getFilter())
 		r.AttachFormatter(f)
 		r.Run()
 	},
@@ -123,6 +129,8 @@ var formats = []string{
 	FORMAT_CSV,
 }
 
+var formatterType string
+
 func getFormatter() (f report.Formatter, err error) {
 	switch formatterType {
 	case FORMAT_CSV:
@@ -146,13 +154,25 @@ func getFormatter() (f report.Formatter, err error) {
 	return
 }
 
+var regexpRepoFilter string
+
+func getFilter() filter.Filter {
+	fg := filter.NewFilterGroup([]filter.Filter{})
+
+	if regexpRepoFilter != "" {
+		fg.Append(filter.NewRepositoryNameRegExpFilter(regexp.MustCompile(regexpRepoFilter)))
+	}
+
+	if fg.Count() == 0 {
+		fg.Append(filter.DefaultFilter)
+	}
+
+	return fg
+}
+
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	RootCmd.PersistentFlags().StringVarP(&formatterType, "format", "f", FORMAT_DEFAULT, fmt.Sprintf(
-		"how the events should be displayed, the options are: %s",
-		strings.Join(formats, ", "),
-	))
 	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.github-journaling-aggregator.yaml)")
 	RootCmd.PersistentFlags().StringVar(&token, "token", "", "github access token (or user password), if not set $GITHUB_TOKEN will be used")
 	RootCmd.PersistentFlags().BoolVarP(&today, "today", "t", false, "use today as beginning date (default)")
@@ -160,6 +180,17 @@ func init() {
 	RootCmd.PersistentFlags().BoolVarP(&lastWeek, "last-week", "w", false, "use the last sunday as beginning date")
 	RootCmd.PersistentFlags().IntVarP(&days, "days", "d", 0, "use today as beginning date")
 	RootCmd.PersistentFlags().StringVar(&date, "date", "", "set a beginning date (format 2017-12-31)")
+
+	RootCmd.PersistentFlags().StringVarP(&formatterType, "format", "f", FORMAT_DEFAULT, fmt.Sprintf(
+		"how the events should be displayed, the options are: %s",
+		strings.Join(formats, ", "),
+	))
+	RootCmd.PersistentFlags().StringVar(
+		&regexpRepoFilter,
+		"repo-name",
+		"",
+		"filter the repository name with a RegExp (rules: https://github.com/google/re2/wiki/Syntax)",
+	)
 }
 
 func validateArgs(cmd *cobra.Command, args []string) error {
