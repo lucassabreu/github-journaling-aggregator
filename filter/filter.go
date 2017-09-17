@@ -25,9 +25,9 @@ type FilterGroup struct {
 	filters []Filter
 }
 
-func NewFilterGroup(filters []Filter) *FilterGroup {
+func NewFilterGroup() *FilterGroup {
 	return &FilterGroup{
-		filters: filters,
+		filters: make([]Filter, 0),
 	}
 }
 

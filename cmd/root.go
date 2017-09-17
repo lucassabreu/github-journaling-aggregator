@@ -157,7 +157,7 @@ func getFormatter() (f report.Formatter, err error) {
 var regexpRepoFilter string
 
 func getFilter() filter.Filter {
-	fg := filter.NewFilterGroup([]filter.Filter{})
+	fg := filter.NewFilterGroup()
 
 	if regexpRepoFilter != "" {
 		fg.Append(filter.NewRepositoryNameRegExpFilter(regexp.MustCompile(regexpRepoFilter)))
