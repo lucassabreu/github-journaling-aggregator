@@ -64,6 +64,31 @@ type RepositoryNameRegExpFilter struct {
 func NewRepositoryNameRegExpFilter(r *regexp.Regexp) *RepositoryNameRegExpFilter {
 	return &RepositoryNameRegExpFilter{r}
 }
+
 func (f *RepositoryNameRegExpFilter) Filter(e *github.Event) bool {
 	return f.r.MatchString(*e.Repo.Name)
+}
+
+type Not struct {
+	f Filter
+}
+
+func NewNot(f Filter) *Not {
+	return &Not{f}
+}
+
+func (n *Not) Filter(e *github.Event) bool {
+	return !n.f.Filter(e)
+}
+
+type EqualsRepository struct {
+	repoName string
+}
+
+func NewEqualsRepository(repoName string) *EqualsRepository {
+	return &EqualsRepository{repoName}
+}
+
+func (er *EqualsRepository) Filter(e *github.Event) bool {
+	return er.repoName == *e.Repo.Name
 }

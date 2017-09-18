@@ -2,8 +2,10 @@
 package filterparser
 
 import (
+	"errors"
 	"fmt"
 	"io"
+	"regexp"
 	"strings"
 
 	"github.com/lucassabreu/github-journaling-aggregator/filter"
@@ -15,6 +17,7 @@ var tokenName = map[Token]string{
 	AND:               "AND",
 	OR:                "OR",
 	NOT:               "NOT",
+	NOT_LIKE:          "NOT LIKE",
 	LIKE:              "LIKE",
 	EQUALS:            "EQUALS",
 	NOT_EQUALS:        "NOT EQUALS",
@@ -61,7 +64,7 @@ func (p *Parser) unscan() { p.buf.n = 1 }
 func (p *Parser) scanIgnoreWhitespace() (tok Token, lit string) {
 	for {
 		tok, lit = p.scan()
-		if tok == WS {
+		if tok != WS {
 			return
 		}
 	}
@@ -80,14 +83,14 @@ func (p *Parser) parseUntil(endToken Token) (fg *filter.FilterGroup, err error) 
 	for {
 		tok, lit := p.scan()
 
-		switch {
-		case tok == OPEN_PARENTHESES:
+		switch tok {
+		case OPEN_PARENTHESES:
 			f, err = p.parseUntil(CLOSE_PARENTHESES)
 			if err != nil {
 				fg = nil
 				return
 			}
-		case tok == FIELD || tok == VALUE:
+		case FIELD, VALUE:
 			p.unscan()
 			f, err = p.parseClause()
 		}
@@ -116,11 +119,15 @@ func (p *Parser) parseClause() (filter.Filter, error) {
 	rTok, rLit := p.scan()
 
 	if tokOperator != EQUALS || tokOperator != NOT_EQUALS || tokOperator != NOT_LIKE || tokOperator != LIKE {
-			tokName, ok := tokenName[tok]
-			if !ok {
-				tokName = "UNKNOWN"
-			}
-		return nil, fmt.Errorf("Expected operator received: %s (type: %s)", tokOperator, )
+		tokName, ok := tokenName[tokOperator]
+		if !ok {
+			tokName = "UNKNOWN"
+		}
+		return nil, fmt.Errorf("Expected operator received: %s (type: %s)", opLit, tokName)
+	}
+
+	if lTok == rTok {
+		return nil, errors.New("You can not compare two fields. Must be a field and a value in a clause !")
 	}
 
 	var field string
@@ -135,8 +142,20 @@ func (p *Parser) parseClause() (filter.Filter, error) {
 
 	value = value[1:][:len(value)-2]
 
-	switch ft := strings.ToLower(field); ft {
-		case ft == "repo.name" || ft == "repo" || ft == "repository"
+	switch strings.ToLower(field) {
+	case "repo.name", "repo", "repository":
+		switch tokOperator {
+		case EQUALS:
+			return filter.NewEqualsRepository(value), nil
+		case NOT_EQUALS:
+			return filter.NewNot(filter.NewEqualsRepository(value)), nil
+		case LIKE:
+			return filter.NewRepositoryNameRegExpFilter(regexp.MustCompile(field)), nil
+		case NOT_LIKE:
+			return filter.NewNot(filter.NewRepositoryNameRegExpFilter(regexp.MustCompile(value))), nil
+		}
+	default:
+		return nil, fmt.Errorf("Unknown field: %s", field)
 	}
 
 	return nil, nil
