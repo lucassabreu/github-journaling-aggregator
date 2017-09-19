@@ -12,6 +12,9 @@ import (
 )
 
 var tokenName = map[Token]string{
+	ILLEGAL:           "ILLEGAL",
+	EOF:               "EOF",
+	WS:                "WS",
 	FIELD:             "FIELD",
 	VALUE:             "VALUE",
 	AND:               "AND",
@@ -81,18 +84,22 @@ func (p *Parser) parseUntil(endToken Token) (fg *filter.FilterGroup, err error) 
 	var f filter.Filter
 
 	for {
-		tok, lit := p.scan()
+		tok, lit := p.scanIgnoreWhitespace()
 
 		switch tok {
+		case EOF, endToken:
+			return
 		case OPEN_PARENTHESES:
 			f, err = p.parseUntil(CLOSE_PARENTHESES)
 			if err != nil {
-				fg = nil
 				return
 			}
 		case FIELD, VALUE:
 			p.unscan()
 			f, err = p.parseClause()
+			if err != nil {
+				return
+			}
 		}
 
 		if f == nil {
@@ -104,21 +111,17 @@ func (p *Parser) parseUntil(endToken Token) (fg *filter.FilterGroup, err error) 
 		}
 
 		fg.Append(f)
-
-		if tok == endToken {
-			break
-		}
 	}
 
 	return
 }
 
 func (p *Parser) parseClause() (filter.Filter, error) {
-	lTok, lLit := p.scan()
-	tokOperator, opLit := p.scan()
-	rTok, rLit := p.scan()
+	lTok, lLit := p.scanIgnoreWhitespace()
+	tokOperator, opLit := p.scanIgnoreWhitespace()
+	rTok, rLit := p.scanIgnoreWhitespace()
 
-	if tokOperator != EQUALS || tokOperator != NOT_EQUALS || tokOperator != NOT_LIKE || tokOperator != LIKE {
+	if tokOperator != EQUALS && tokOperator != NOT_EQUALS && tokOperator != NOT_LIKE && tokOperator != LIKE {
 		tokName, ok := tokenName[tokOperator]
 		if !ok {
 			tokName = "UNKNOWN"
@@ -127,11 +130,10 @@ func (p *Parser) parseClause() (filter.Filter, error) {
 	}
 
 	if lTok == rTok {
-		return nil, errors.New("You can not compare two fields. Must be a field and a value in a clause !")
+		return nil, errors.New("You can not compare two fields or values. Must be a field and a value in a clause !")
 	}
 
-	var field string
-	var value string
+	var field, value string
 
 	switch lTok {
 	case FIELD:
@@ -150,7 +152,7 @@ func (p *Parser) parseClause() (filter.Filter, error) {
 		case NOT_EQUALS:
 			return filter.NewNot(filter.NewEqualsRepository(value)), nil
 		case LIKE:
-			return filter.NewRepositoryNameRegExpFilter(regexp.MustCompile(field)), nil
+			return filter.NewRepositoryNameRegExpFilter(regexp.MustCompile(value)), nil
 		case NOT_LIKE:
 			return filter.NewNot(filter.NewRepositoryNameRegExpFilter(regexp.MustCompile(value))), nil
 		}

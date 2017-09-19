@@ -25,6 +25,7 @@ import (
 
 	"github.com/google/go-github/github"
 	"github.com/lucassabreu/github-journaling-aggregator/filter"
+	"github.com/lucassabreu/github-journaling-aggregator/filterparser"
 	"github.com/lucassabreu/github-journaling-aggregator/formatter"
 	"github.com/lucassabreu/github-journaling-aggregator/report"
 	homedir "github.com/mitchellh/go-homedir"
@@ -96,9 +97,14 @@ var RootCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal(err)
 		}
-
-		r.SetFilter(getFilter())
 		r.AttachFormatter(f)
+
+		filt, err := getFilter()
+		if err != nil {
+			log.Fatal(err)
+		}
+		r.SetFilter(filt)
+
 		r.Run()
 	},
 }
@@ -154,20 +160,29 @@ func getFormatter() (f report.Formatter, err error) {
 	return
 }
 
-var regexpRepoFilter string
+var regexpRepoFilter, where string
 
-func getFilter() filter.Filter {
+func getFilter() (filter.Filter, error) {
+	if where != "" {
+		p := filterparser.NewParser(strings.NewReader(where))
+		return p.Parse()
+	}
+
 	fg := filter.NewFilterGroup()
 
 	if regexpRepoFilter != "" {
-		fg.Append(filter.NewRepositoryNameRegExpFilter(regexp.MustCompile(regexpRepoFilter)))
+		re, err := regexp.Compile(regexpRepoFilter)
+		if err != nil {
+			return nil, err
+		}
+		fg.Append(filter.NewRepositoryNameRegExpFilter(re))
 	}
 
 	if fg.Count() == 0 {
 		fg.Append(filter.DefaultFilter)
 	}
 
-	return fg
+	return fg, nil
 }
 
 func init() {
@@ -185,6 +200,12 @@ func init() {
 		"how the events should be displayed, the options are: %s",
 		strings.Join(formats, ", "),
 	))
+	RootCmd.PersistentFlags().StringVar(
+		&where,
+		"where",
+		"",
+		"a query to filter the repositories to show",
+	)
 	RootCmd.PersistentFlags().StringVar(
 		&regexpRepoFilter,
 		"repo-name",
