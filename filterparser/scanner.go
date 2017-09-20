@@ -89,6 +89,14 @@ func (s *Scanner) Scan() (Token, string) {
 	// Read the next rune.
 	ch := s.read()
 
+	if ch == '(' {
+		return OPEN_PARENTHESES, "("
+	}
+
+	if ch == ')' {
+		return CLOSE_PARENTHESES, ")"
+	}
+
 	// If we see whitespace then consume all contiguous whitespace.
 	// If we see a letter then consume as an ident or reserved word.
 	if isWhitespace(ch) {

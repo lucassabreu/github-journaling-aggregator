@@ -1,6 +1,7 @@
 package filter
 
 import (
+	"fmt"
 	"regexp"
 
 	"github.com/google/go-github/github"
@@ -21,27 +22,45 @@ func (df defaultFilter) Filter(e *github.Event) bool {
 
 var DefaultFilter = new(defaultFilter)
 
-type FilterGroup struct {
+type FilterGroup interface {
+	Filter
+	Append(...Filter)
+	Count() int
+}
+
+type filterGroupBase struct {
 	filters []Filter
 }
 
-func NewFilterGroup() *FilterGroup {
-	return &FilterGroup{
+func newFilterGroupBase() filterGroupBase {
+	return filterGroupBase{
 		filters: make([]Filter, 0),
 	}
 }
 
 // Append a new filter to the group
-func (fg *FilterGroup) Append(f Filter) {
-	fg.filters = append(fg.filters, f)
+func (fg *filterGroupBase) Append(filters ...Filter) {
+	for _, f := range filters {
+		fg.filters = append(fg.filters, f)
+	}
 }
 
-func (fg *FilterGroup) Count() int {
+func (fg *filterGroupBase) Count() int {
 	return len(fg.filters)
 }
 
-// Filter will call the other filters in the group, if one of then returns true, then the FilterGroup will return true, otherwise false
-func (fg *FilterGroup) Filter(e *github.Event) bool {
+type OrGroup struct {
+	filterGroupBase
+}
+
+func NewOrGroup() *OrGroup {
+	return &OrGroup{
+		filterGroupBase: newFilterGroupBase(),
+	}
+}
+
+// Filter will call the other filters in the group, if one of then returns true, then the OrGroup will return true, otherwise false
+func (fg *OrGroup) Filter(e *github.Event) bool {
 	for _, f := range fg.filters {
 		if f.Filter(e) {
 			return true
@@ -49,6 +68,31 @@ func (fg *FilterGroup) Filter(e *github.Event) bool {
 	}
 
 	return false
+}
+
+type AndGroup struct {
+	filterGroupBase
+}
+
+func NewAndGroup() *AndGroup {
+	return &AndGroup{
+		filterGroupBase: newFilterGroupBase(),
+	}
+}
+
+// Filter will call the other filters in the group, if one of then returns false, then the AndGroup will return false, otherwise true
+func (fg *AndGroup) Filter(e *github.Event) bool {
+	for _, f := range fg.filters {
+		if !f.Filter(e) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (fg *AndGroup) String() string {
+	return fmt.Sprintf("(%s)", fg.)
 }
 
 type FilterFunc func(e *github.Event) bool
@@ -69,6 +113,10 @@ func (f *RepositoryNameRegExpFilter) Filter(e *github.Event) bool {
 	return f.r.MatchString(*e.Repo.Name)
 }
 
+func (f *RepositoryNameRegExpFilter) String() string {
+	return fmt.Sprintf("Repo.Name like \"%s\"", f.r.String())
+}
+
 type Not struct {
 	f Filter
 }
@@ -79,6 +127,10 @@ func NewNot(f Filter) *Not {
 
 func (n *Not) Filter(e *github.Event) bool {
 	return !n.f.Filter(e)
+}
+
+func (n *Not) String() string {
+	return fmt.Sprintf("!(%s)", n.f)
 }
 
 type EqualsRepository struct {

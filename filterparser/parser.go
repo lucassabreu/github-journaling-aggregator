@@ -75,45 +75,85 @@ func (p *Parser) scanIgnoreWhitespace() (tok Token, lit string) {
 
 // Parse will read the content and return a Filter instance with it
 func (p *Parser) Parse() (filter.Filter, error) {
-	fg, err := p.parseUntil(EOF)
-	return fg, err
+	return p.parseUntil(EOF)
 }
 
-func (p *Parser) parseUntil(endToken Token) (fg *filter.FilterGroup, err error) {
-	fg = filter.NewFilterGroup()
-	var f filter.Filter
+func (p *Parser) parseUntil(endToken Token) (last filter.Filter, err error) {
 
+TOKEN_LOOP:
 	for {
 		tok, lit := p.scanIgnoreWhitespace()
 
 		switch tok {
 		case EOF, endToken:
-			return
-		case OPEN_PARENTHESES:
-			f, err = p.parseUntil(CLOSE_PARENTHESES)
-			if err != nil {
-				return
-			}
-		case FIELD, VALUE:
+			break TOKEN_LOOP
+		case AND, OR:
 			p.unscan()
-			f, err = p.parseClause()
-			if err != nil {
-				return
-			}
+			last, err = p.parseGroup(last)
+		case NOT:
+			last, err = p.parseNot()
+		case OPEN_PARENTHESES, FIELD, VALUE:
+			p.unscan()
+			last, err = p.parseCommon()
+		default:
+			err = unexpectedToken(tok, lit, "(, AND, OR, field or value")
 		}
 
-		if f == nil {
-			tokName, ok := tokenName[tok]
-			if !ok {
-				tokName = "UNKNOWN"
-			}
-			err = fmt.Errorf("Expected (, field or value, received: %s (type: %s)", lit, tokName)
+		if err != nil {
+			return
 		}
-
-		fg.Append(f)
 	}
 
-	return
+	return last, nil
+}
+
+func unexpectedToken(tok Token, lit, expected string) error {
+	tokName, ok := tokenName[tok]
+	if !ok {
+		tokName = "UNKNOWN"
+	}
+	return fmt.Errorf("Expected %s, received: %s (type: %s)", expected, lit, tokName)
+}
+
+func (p *Parser) parseGroup(prev filter.Filter) (filter.Filter, error) {
+	var fg filter.FilterGroup
+	switch tok, lit := p.scanIgnoreWhitespace(); tok {
+	case AND:
+		fg = filter.NewAndGroup()
+	case OR:
+		fg = filter.NewOrGroup()
+	default:
+		return nil, unexpectedToken(tok, lit, "AND or OR")
+	}
+
+	next, err := p.parseCommon()
+	if err != nil {
+		return nil, err
+	}
+
+	fg.Append(prev, next)
+	return fg, nil
+}
+
+func (p *Parser) parseCommon() (filter.Filter, error) {
+	switch tok, lit := p.scanIgnoreWhitespace(); tok {
+	case FIELD, VALUE:
+		p.unscan()
+		return p.parseClause()
+	case OPEN_PARENTHESES:
+		return p.parseUntil(CLOSE_PARENTHESES)
+	default:
+		return nil, unexpectedToken(tok, lit, "(, field or value")
+	}
+}
+
+func (p *Parser) parseNot() (filter.Filter, error) {
+	f, err := p.parseCommon()
+	if err != nil {
+		return nil, err
+	}
+
+	return filter.NewNot(f), nil
 }
 
 func (p *Parser) parseClause() (filter.Filter, error) {
@@ -122,11 +162,7 @@ func (p *Parser) parseClause() (filter.Filter, error) {
 	rTok, rLit := p.scanIgnoreWhitespace()
 
 	if tokOperator != EQUALS && tokOperator != NOT_EQUALS && tokOperator != NOT_LIKE && tokOperator != LIKE {
-		tokName, ok := tokenName[tokOperator]
-		if !ok {
-			tokName = "UNKNOWN"
-		}
-		return nil, fmt.Errorf("Expected operator received: %s (type: %s)", opLit, tokName)
+		return nil, unexpectedToken(tokOperator, opLit, "operator")
 	}
 
 	if lTok == rTok {
@@ -159,6 +195,5 @@ func (p *Parser) parseClause() (filter.Filter, error) {
 	default:
 		return nil, fmt.Errorf("Unknown field: %s", field)
 	}
-
-	return nil, nil
+	return nil, fmt.Errorf("Could not undestand field %s", field)
 }
