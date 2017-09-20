@@ -92,7 +92,7 @@ func (fg *AndGroup) Filter(e *github.Event) bool {
 }
 
 func (fg *AndGroup) String() string {
-	return fmt.Sprintf("(%s)", fg.)
+	return fmt.Sprintf("(%s)", fg.filters)
 }
 
 type FilterFunc func(e *github.Event) bool

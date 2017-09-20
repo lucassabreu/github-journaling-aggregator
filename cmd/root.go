@@ -165,11 +165,7 @@ var regexpRepoFilter, where string
 func getFilter() (filter.Filter, error) {
 	if where != "" {
 		p := filterparser.NewParser(strings.NewReader(where))
-		f, err := p.Parse()
-		fmt.Printf("%s\n", f)
-		fmt.Println(err)
-		panic("stop")
-		return f, err
+		return p.Parse()
 	}
 
 	fg := filter.NewOrGroup()
