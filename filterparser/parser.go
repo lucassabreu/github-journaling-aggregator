@@ -80,14 +80,17 @@ func (p *Parser) Parse() (filter.Filter, error) {
 
 func (p *Parser) parseUntil(endToken Token) (last filter.Filter, err error) {
 
-TOKEN_LOOP:
 	for {
 		tok, lit := p.scanIgnoreWhitespace()
 
 		switch tok {
 		case EOF, endToken:
-			break TOKEN_LOOP
+			return
 		case AND, OR:
+			if last == nil {
+				return nil, unexpectedToken(tok, lit, "(, field or value")
+			}
+
 			p.unscan()
 			last, err = p.parseGroup(last)
 		case NOT:

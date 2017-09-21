@@ -49,6 +49,14 @@ func (fg *filterGroupBase) Count() int {
 	return len(fg.filters)
 }
 
+func (fg *filterGroupBase) join(glue string) string {
+	r := ""
+	for _, f := range fg.filters {
+		r = fmt.Sprintf("%s %s %s", r, glue, f)
+	}
+	return "(" + r[len(glue)+2:] + ")"
+}
+
 type OrGroup struct {
 	filterGroupBase
 }
@@ -68,6 +76,10 @@ func (fg *OrGroup) Filter(e *github.Event) bool {
 	}
 
 	return false
+}
+
+func (fg *OrGroup) String() string {
+	return fg.join("or")
 }
 
 type AndGroup struct {
@@ -92,7 +104,7 @@ func (fg *AndGroup) Filter(e *github.Event) bool {
 }
 
 func (fg *AndGroup) String() string {
-	return fmt.Sprintf("(%s)", fg.filters)
+	return fg.join("and")
 }
 
 type FilterFunc func(e *github.Event) bool
@@ -130,7 +142,7 @@ func (n *Not) Filter(e *github.Event) bool {
 }
 
 func (n *Not) String() string {
-	return fmt.Sprintf("!(%s)", n.f)
+	return fmt.Sprintf("!%s", n.f)
 }
 
 type EqualsRepository struct {
@@ -143,4 +155,8 @@ func NewEqualsRepository(repoName string) *EqualsRepository {
 
 func (er *EqualsRepository) Filter(e *github.Event) bool {
 	return er.repoName == *e.Repo.Name
+}
+
+func (er *EqualsRepository) String() string {
+	return fmt.Sprintf("Repo.Name == \"%s\"", er.repoName)
 }
