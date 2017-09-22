@@ -53,20 +53,18 @@ var (
 	days           int
 	date           string
 
-	username string
-	token    string
+	token string
 )
 
 // RootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
-	Use:   "github-journaling-aggregator <username>",
+	Use:   "github-journaling-aggregator",
 	Short: "Create a simple report using your activity feed at GitHub",
 	Long: `Create a simple report using your activity feed at GitHub.
 
-	Will receive a username, access token and a beginning date and generate a report based on the users activity feed on GitHub`,
+	Will receive a access token and beginning date to generate a report based on the users activity feed on GitHub`,
 	Args: validateArgs,
 	Run: func(cmd *cobra.Command, args []string) {
-		username = args[0]
 		var beginningDate time.Time = time.Now()
 
 		switch dateFilterType {
@@ -91,7 +89,7 @@ var RootCmd = &cobra.Command{
 		tc := oauth2.NewClient(context.Background(), ts)
 
 		client := github.NewClient(tc)
-		r := report.New(client, username, beginningDate)
+		r := report.New(client, beginningDate)
 
 		f, err := getFormatter()
 		if err != nil {
@@ -250,9 +248,6 @@ func validateArgs(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("can't mix the beginning flags")
 	}
 
-	if len(args) != 1 || strings.TrimSpace(args[0]) == "" {
-		return fmt.Errorf("username is required")
-	}
 	return nil
 }
 

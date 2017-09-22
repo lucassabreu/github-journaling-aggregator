@@ -10,11 +10,13 @@ import (
 	"github.com/lucassabreu/github-journaling-aggregator/filter"
 )
 
+// Message represents some event from GitHub, but with a little preprocessing
 type Message struct {
 	github.Event
 
-	Payload interface{}
-	Message string
+	EventName string
+	Payload   interface{}
+	Message   string
 }
 
 // Formatter is a interface for output Formatters to implement
@@ -27,17 +29,16 @@ type Formatter interface {
 // Report will read data from GitHub and forward then to the Formatters
 type Report struct {
 	client     *github.Client
-	username   string
+	user       *github.User
 	beginning  time.Time
 	formatters []Formatter
 	filter     filter.Filter
 }
 
 // New Report
-func New(client *github.Client, username string, beginning time.Time) Report {
+func New(client *github.Client, beginning time.Time) Report {
 	return Report{
 		client:     client,
-		username:   username,
 		beginning:  beginning,
 		formatters: make([]Formatter, 0),
 		filter:     filter.DefaultFilter,
@@ -54,19 +55,32 @@ func (r *Report) SetFilter(filter filter.Filter) {
 }
 
 func (r *Report) Run() {
+
+	err := r.setUser()
+	if err != nil {
+		r.formatError(err)
+		return
+	}
+
 	r.getEvents()
 	for _, f := range r.formatters {
 		f.Close()
 	}
 }
 
+func (r *Report) setUser() (err error) {
+	r.user, _, err = r.client.Users.Get(context.Background(), "")
+	return
+}
+
 func (r *Report) getEvents() {
+
 	beginning := r.beginning.Add(-24 * time.Hour)
 	beginning = time.Date(beginning.Year(), beginning.Month(), beginning.Day(), 23, 59, 59, int(time.Second)-1, time.Local)
 
 	opt := &github.ListOptions{PerPage: 10}
 	for {
-		events, resp, err := r.client.Activity.ListEventsPerformedByUser(context.Background(), r.username, false, opt)
+		events, resp, err := r.client.Activity.ListEventsPerformedByUser(context.Background(), *r.user.Login, false, opt)
 
 		if err != nil {
 			r.formatError(err)
@@ -120,15 +134,29 @@ func (r *Report) forward(e *github.Event) error {
 			name = *p.Ref
 		}
 
-		r.format(Message{*e, p, fmt.Sprintf("created %s \"%s\"", *p.RefType, name)})
+		t := fmt.Sprintf("created %s", *p.RefType)
+
+		r.format(Message{
+			*e,
+			t,
+			p,
+			fmt.Sprintf("%s \"%s\"", t, name),
+		})
 
 	case *github.IssueCommentEvent:
-		r.format(Message{*e, p, fmt.Sprintf(
-			"%v comment in issue %v#%d with content: \"%v\"",
-			*p.Action,
-			*e.Repo.Name,
-			*p.Issue.Number,
-			*p.Comment.Body)})
+		t := fmt.Sprintf("%s comment", *p.Action)
+		r.format(Message{
+			*e,
+			t,
+			p,
+			fmt.Sprintf(
+				"%s in issue %v#%d with content: \"%v\"",
+				t,
+				*e.Repo.Name,
+				*p.Issue.Number,
+				*p.Comment.Body,
+			),
+		})
 
 	case *github.IssuesEvent:
 		if p.Action == nil {
@@ -136,7 +164,12 @@ func (r *Report) forward(e *github.Event) error {
 		}
 		action := *p.Action
 		if action == "opened" || action == "closed" || action == "reopened" || action == "edited" {
-			r.format(Message{*e, p, fmt.Sprintf("%s the issue %s#%d (%s)", action, *e.Repo.Name, *p.Issue.Number, *p.Issue.Title)})
+			r.format(Message{
+				*e,
+				action + " issue",
+				p,
+				fmt.Sprintf("%s the issue %s#%d (%s)", action, *e.Repo.Name, *p.Issue.Number, *p.Issue.Title),
+			})
 		}
 
 	case *github.PullRequestEvent:
@@ -154,22 +187,29 @@ func (r *Report) forward(e *github.Event) error {
 				action = "canceled"
 			}
 		}
-		r.format(Message{*e, p, fmt.Sprintf("%s the pull request %s#%d (%s)", action, *e.Repo.Name, *p.PullRequest.Number, *p.PullRequest.Title)})
+		r.format(Message{
+			*e,
+			action + " pull request",
+			p,
+			fmt.Sprintf("%s the pull request %s#%d (%s)", action, *e.Repo.Name, *p.PullRequest.Number, *p.PullRequest.Title),
+		})
 
-		// case *github.MemberEvent:
-		// case *github.MilestoneEvent:
-		// case *github.PublicEvent:
 	case *github.PullRequestReviewCommentEvent:
 		if p.Action == nil {
 			break
 		}
-		r.format(Message{*e, p, fmt.Sprintf(
-			"%s a comment in the pull request %s#%d with \"%s\"",
-			*p.Action,
-			*e.Repo.Name,
-			*p.PullRequest.Number,
-			*p.Comment.Body,
-		)})
+		r.format(Message{
+			*e,
+			*p.Action + " pull request comment",
+			p,
+			fmt.Sprintf(
+				"%s a comment in the pull request %s#%d with \"%s\"",
+				*p.Action,
+				*e.Repo.Name,
+				*p.PullRequest.Number,
+				*p.Comment.Body,
+			),
+		})
 
 	case *github.PushEvent:
 		for _, c := range p.Commits {
@@ -178,6 +218,7 @@ func (r *Report) forward(e *github.Event) error {
 			}
 			r.format(Message{
 				*e,
+				"pushed commit",
 				p,
 				fmt.Sprintf("pushed commit %s with message: %v",
 					*c.SHA,
@@ -188,7 +229,7 @@ func (r *Report) forward(e *github.Event) error {
 	// ignore
 	case *github.DeleteEvent:
 	default:
-		r.format(Message{*e, p, *e.Type})
+		r.format(Message{*e, "unknown", p, *e.Type})
 	}
 	return nil
 }
