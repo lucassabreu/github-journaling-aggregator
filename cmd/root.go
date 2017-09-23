@@ -123,6 +123,7 @@ const (
 	FORMAT_MD         = "md"
 	FORMAT_GROUP_LINE = "groupline"
 	FORMAT_CSV        = "csv"
+	FORMAT_HTML       = "html"
 )
 
 var formats = []string{
@@ -131,6 +132,7 @@ var formats = []string{
 	FORMAT_MD,
 	FORMAT_GROUP_LINE,
 	FORMAT_CSV,
+	FORMAT_HTML,
 }
 
 var formatterType string
@@ -152,6 +154,9 @@ func getFormatter() (f report.Formatter, err error) {
 	case FORMAT_RAW:
 		r := formatter.NewRaw(os.Stdout)
 		f = &r
+	case FORMAT_HTML:
+		h := formatter.NewHTML(os.Stdout)
+		f = &h
 	default:
 		err = fmt.Errorf("Format %s is not valid !", formatterType)
 	}
