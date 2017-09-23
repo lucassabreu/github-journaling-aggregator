@@ -55,7 +55,6 @@ func (r *Report) SetFilter(filter filter.Filter) {
 }
 
 func (r *Report) Run() {
-
 	err := r.setUser()
 	if err != nil {
 		r.formatError(err)
@@ -74,7 +73,6 @@ func (r *Report) setUser() (err error) {
 }
 
 func (r *Report) getEvents() {
-
 	beginning := r.beginning.Add(-24 * time.Hour)
 	beginning = time.Date(beginning.Year(), beginning.Month(), beginning.Day(), 23, 59, 59, int(time.Second)-1, time.Local)
 

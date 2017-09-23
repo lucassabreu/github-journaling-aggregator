@@ -195,6 +195,17 @@ func (p *Parser) parseClause() (filter.Filter, error) {
 		case NOT_LIKE:
 			return filter.NewNot(filter.NewRepositoryNameRegExpFilter(regexp.MustCompile(value))), nil
 		}
+	case "type", "typename":
+		switch tokOperator {
+		case EQUALS:
+			return filter.NewEqualsType(value), nil
+		case NOT_EQUALS:
+			return filter.NewNot(filter.NewEqualsType(value)), nil
+		case LIKE:
+			return filter.NewTypeRegExpFilter(regexp.MustCompile(value)), nil
+		case NOT_LIKE:
+			return filter.NewNot(filter.NewTypeRegExpFilter(regexp.MustCompile(value))), nil
+		}
 	default:
 		return nil, fmt.Errorf("Unknown field: %s", field)
 	}

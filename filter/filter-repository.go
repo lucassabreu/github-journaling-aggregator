@@ -3,6 +3,7 @@ package filter
 import (
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/google/go-github/github"
 )
@@ -28,11 +29,11 @@ type EqualsRepository struct {
 }
 
 func NewEqualsRepository(repoName string) *EqualsRepository {
-	return &EqualsRepository{repoName}
+	return &EqualsRepository{strings.ToLower(repoName)}
 }
 
 func (er *EqualsRepository) Filter(e *github.Event) bool {
-	return er.repoName == *e.Repo.Name
+	return er.repoName == strings.ToLower(*e.Repo.Name)
 }
 
 func (er *EqualsRepository) String() string {

@@ -3,38 +3,39 @@ package filter
 import (
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/google/go-github/github"
 )
 
-type EventNameRegExpFilter struct {
+type TypeRegExpFilter struct {
 	r *regexp.Regexp
 }
 
-func NewEventNameRegExpFilter(r *regexp.Regexp) *EventNameRegExpFilter {
-	return &EventNameRegExpFilter{r}
+func NewTypeRegExpFilter(r *regexp.Regexp) *TypeRegExpFilter {
+	return &TypeRegExpFilter{r}
 }
 
-func (f *EventNameRegExpFilter) Filter(e *github.Event) bool {
-	return f.r.MatchString(*e.Repo.Name)
+func (f *TypeRegExpFilter) Filter(e *github.Event) bool {
+	return f.r.MatchString(strings.ToLower(*e.Type))
 }
 
-func (f *EventNameRegExpFilter) String() string {
-	return fmt.Sprintf("EventName like \"%s\"", f.r.String())
+func (f *TypeRegExpFilter) String() string {
+	return fmt.Sprintf("Type like \"%s\"", f.r.String())
 }
 
-type EqualsEventName struct {
-	eventName string
+type EqualsType struct {
+	typeName string
 }
 
-func NewEqualsEventName(eventName string) *EqualsEventName {
-	return &EqualsEventName{eventName}
+func NewEqualsType(typeName string) *EqualsType {
+	return &EqualsType{strings.ToLower(typeName)}
 }
 
-func (er *EqualsEventName) Filter(e *github.Event) bool {
-	return er.eventName == *e.Repo.Name
+func (er *EqualsType) Filter(e *github.Event) bool {
+	return er.typeName == strings.ToLower(*e.Type)
 }
 
-func (er *EqualsEventName) String() string {
-	return fmt.Sprintf("EventName == \"%s\"", er.eventName)
+func (er *EqualsType) String() string {
+	return fmt.Sprintf("Type == \"%s\"", er.typeName)
 }
