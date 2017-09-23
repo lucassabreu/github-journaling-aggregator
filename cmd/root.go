@@ -91,7 +91,7 @@ var RootCmd = &cobra.Command{
 		client := github.NewClient(tc)
 		r := report.New(client, beginningDate)
 
-		f, err := getFormatter()
+		f, err := getFormatter(beginningDate)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -137,7 +137,7 @@ var formats = []string{
 
 var formatterType string
 
-func getFormatter() (f report.Formatter, err error) {
+func getFormatter(beginningDate time.Time) (f report.Formatter, err error) {
 	switch formatterType {
 	case FORMAT_CSV:
 		t := formatter.NewCSV(os.Stdout)
@@ -155,7 +155,7 @@ func getFormatter() (f report.Formatter, err error) {
 		r := formatter.NewRaw(os.Stdout)
 		f = &r
 	case FORMAT_HTML:
-		h := formatter.NewHTML(os.Stdout)
+		h := formatter.NewHTML(os.Stdout, beginningDate)
 		f = &h
 	default:
 		err = fmt.Errorf("Format %s is not valid !", formatterType)
