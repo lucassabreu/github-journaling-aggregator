@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"html/template"
 	"io"
-	"io/ioutil"
 	"time"
 
 	"github.com/lucassabreu/github-journaling-aggregator/report"
@@ -38,8 +37,7 @@ func (h *HTML) FormatError(err error) {
 }
 
 func (h *HTML) Close() {
-	f, _ := Assets.Open("html.html")
-	tpl, _ := ioutil.ReadAll(f)
+	tpl, _ := getAssetContent("/html.html")
 	t, err := template.New("report").Parse(string(tpl))
 	if err != nil {
 		panic(err)
