@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"io/ioutil"
 	"time"
 
 	"github.com/lucassabreu/github-journaling-aggregator/report"
@@ -37,7 +38,9 @@ func (h *HTML) FormatError(err error) {
 }
 
 func (h *HTML) Close() {
-	t, err := template.New("report").Parse(tpl)
+	f, _ := Assets.Open("html.html")
+	tpl, _ := ioutil.ReadAll(f)
+	t, err := template.New("report").Parse(string(tpl))
 	if err != nil {
 		panic(err)
 	}
@@ -73,52 +76,3 @@ type templateData struct {
 	Messages []report.Message
 	Errors   []error
 }
-
-const tpl = `
-<html>
-<head>
-  <title>{{ .Title }}</title>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
-  <link rel="stylesheet" href="https://code.getmdl.io/1.3.0/material.indigo-pink.min.css">
-  <style>
-    table td.message {
-      white-space: normal;
-    }
-  </style>
-</head>
-<body>
-<div class="mdl-layout mdl-layout--fixed-header mdl-js-layout mdl-color--grey-100">
-  <header class="mdl-layout__header mdl-layout__header--scroll mdl-color--grey-100 mdl-color-text--grey-800">
-    <div class="mdl-layout__header-row">
-      <span class="mdl-layout-title">{{ .Title }}</span>
-    </div>
-  </header>
-  <main class="mdl-layout__content">
-    <ul class="mdl-list mdl-cell mdl-cell--12-col">
-      {{ range .Errors }}
-        <li class="mdl-list__item">{{ .Error }}</li>
-      {{ end }}
-    </ul>
-
-    <table class="mdl-data-table mdl-js-data-table mdl-shadow--2dp mdl-cell mdl-cell--12-col">
-      <thead>
-        <th class="mdl-data-table__cell--non-numeric">Event Name</th>
-        <th class="mdl-data-table__cell--non-numeric">Repo Name</th>
-        <th class="mdl-data-table__cell--non-numeric">Message</th>
-      </thead>
-      <tbody>
-        {{ range .Messages }}
-          <tr>
-            <td class="mdl-data-table__cell--non-numeric">{{ .EventName }}</td>
-            <td class="mdl-data-table__cell--non-numeric">{{ .Repo.Name }}</td>
-            <td class="mdl-data-table__cell--non-numeric message">{{ .Message }}</td>
-          </tr>
-        {{ end }}
-      </tbody>
-    </table>
-  </main>
-</div>
-<script defer src="https://code.getmdl.io/1.3.0/material.min.js"></script>
-</body>
-</html>
-`
