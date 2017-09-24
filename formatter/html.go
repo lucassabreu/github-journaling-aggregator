@@ -2,13 +2,28 @@ package formatter
 
 import (
 	"fmt"
-	"html/template"
 	"io"
+	"text/template"
 	"time"
 
 	"github.com/lucassabreu/github-journaling-aggregator/report"
-	// markdown "github.com/shurcooL/github_flavored_markdown"
+	"github.com/russross/blackfriday"
 )
+
+type templateData struct {
+	Title    string
+	Messages []report.Message
+	Errors   []error
+}
+
+var funcs = template.FuncMap{
+	"markdown": func(s string) string {
+		return string(blackfriday.MarkdownCommon([]byte(s)))
+	},
+	"derefstr": func(s *string) string {
+		return *s
+	},
+}
 
 type HTML struct {
 	w      io.Writer
@@ -38,17 +53,14 @@ func (h *HTML) FormatError(err error) {
 
 func (h *HTML) Close() {
 	tpl, _ := getAssetContent("/html.html")
-	t, err := template.New("report").Parse(string(tpl))
+	t := template.New("report")
+	t.Funcs(funcs)
+	t, err := t.Parse(string(tpl))
 	if err != nil {
 		panic(err)
 	}
 
 	h.messages = h.sorter.SortByCreatedAt(h.messages)
-
-	for i, m := range h.messages {
-		// m.Message = string(markdown.Markdown([]byte(m.Message)))
-		h.messages[i] = m
-	}
 
 	sinceString := h.since.Format("2006-01-02")
 	nowString := time.Now().Format("2006-01-02")
@@ -62,15 +74,12 @@ func (h *HTML) Close() {
 		title = "Events in " + nowString
 	}
 
-	t.Execute(h.w, templateData{
+	err = t.Execute(h.w, templateData{
 		Title:    title,
 		Messages: h.messages,
 		Errors:   h.errors,
 	})
-}
-
-type templateData struct {
-	Title    string
-	Messages []report.Message
-	Errors   []error
+	if err != nil {
+		panic(err)
+	}
 }

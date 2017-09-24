@@ -217,7 +217,7 @@ func (r *Report) forward(e *github.Event) error {
 			r.format(Message{
 				*e,
 				"pushed commit",
-				p,
+				c,
 				fmt.Sprintf("pushed commit %s with message: %v",
 					*c.SHA,
 					strings.Split(*c.Message, "\n")[0]),
