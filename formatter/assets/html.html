@@ -1,8 +1,14 @@
+
 <html>
 <head>
   <title>{{ .Title }}</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
   <link rel="stylesheet" href="https://code.getmdl.io/1.3.0/material.indigo-pink.min.css">
+  <style>
+    table td.message {
+      white-space: normal;
+    }
+  </style>
 </head>
 <body>
 <div class="mdl-layout mdl-layout--fixed-header mdl-js-layout mdl-color--grey-100">
@@ -12,22 +18,28 @@
     </div>
   </header>
   <main class="mdl-layout__content">
-    <div class="mdl-grid">
-      <table class="mdl-data-table mdl-js-data-table mdl-shadow--2dp mdl-cell mdl-cell--8-col">
-        <thead>
-          <th class="mdl-data-table__cell--non-numeric">Event Name</th>
-          <th class="mdl-data-table__cell--non-numeric">Message</th>
-        </thead>
-        <tbody>
-          {{ range .Messages }}
-            <tr>
-              <td class="mdl-data-table__cell--non-numeric">{{ .EventName }}</td>
-              <td class="mdl-data-table__cell--non-numeric">{{ .Message }}</td>
-            </tr>
-          {{ end }}
-        </tbody>
-      </table>
-    </div>
+    <ul class="mdl-list mdl-cell mdl-cell--12-col">
+      {{ range .Errors }}
+        <li class="mdl-list__item">{{ .Error }}</li>
+      {{ end }}
+    </ul>
+
+    <table class="mdl-data-table mdl-js-data-table mdl-shadow--2dp mdl-cell mdl-cell--12-col">
+      <thead>
+        <th class="mdl-data-table__cell--non-numeric">Event Name</th>
+        <th class="mdl-data-table__cell--non-numeric">Repo Name</th>
+        <th class="mdl-data-table__cell--non-numeric">Message</th>
+      </thead>
+      <tbody>
+        {{ range .Messages }}
+          <tr>
+            <td class="mdl-data-table__cell--non-numeric">{{ .EventName }}</td>
+            <td class="mdl-data-table__cell--non-numeric">{{ .Repo.Name }}</td>
+            <td class="mdl-data-table__cell--non-numeric message">{{ .Message }}</td>
+          </tr>
+        {{ end }}
+      </tbody>
+    </table>
   </main>
 </div>
 <script defer src="https://code.getmdl.io/1.3.0/material.min.js"></script>

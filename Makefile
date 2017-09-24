@@ -37,11 +37,14 @@ lint: ## Run all the linters
 
 ci: lint test ## Run all the tests and code checks
 
-build: ## Build a beta version
+gen: ## Update generated code in the project
+	go generate ./...
+
+build: gen ## Build a beta version
 	mkdir -p dist
 	go build -o dist/github-journaling-aggregator ./main.go
 
-install: ## Install to $GOPATH/src
+install: gen ## Install to $GOPATH/src
 	go install ./...
 
 # Absolutely awesome: http://marmelab.com/blog/2016/02/29/auto-documented-makefile.html
