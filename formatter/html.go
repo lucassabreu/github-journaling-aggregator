@@ -3,6 +3,7 @@ package formatter
 import (
 	"fmt"
 	"io"
+	"strings"
 	"text/template"
 	"time"
 
@@ -23,6 +24,7 @@ var funcs = template.FuncMap{
 	"derefstr": func(s *string) string {
 		return *s
 	},
+	"title": strings.Title,
 }
 
 type HTML struct {

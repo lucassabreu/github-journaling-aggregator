@@ -44,6 +44,12 @@
                 Pull Request <a href="{{ $ghu }}/pull/{{ .Payload.PullRequest.Number }}">{{ .Payload.PullRequest.Title }}</a> {{ .Payload.Action }}
                 {{ else if eq (derefstr .Type) "PushEvent" }}
                 Pushed commit <a href="{{ $ghu }}/commit/{{ .Payload.SHA }}">{{ .Payload.Message | markdown }}</a>
+                {{ else if eq (derefstr .Type) "IssuesEvent" }}
+                Issue <a href="{{ $ghu }}/issues/{{ .Payload.Issue.Number }}">{{ .Payload.Issue.Title }} ({{ .Payload.Issue.Number }})</a> {{ .Payload.Action }}
+                {{ else if eq (derefstr .Type) "PullRequestReviewCommentEvent" }}
+                {{ .Payload.Action | title }} <a href="{{ .Payload.Comment.HTMLURL }}">comment</a>
+                pull request <a href="{{ $ghu }}/issues/{{ .Payload.PullRequest.Number }}">{{ .Payload.PullRequest.Title }}</a> with:
+                {{ .Payload.Comment.Body | markdown }}
                 {{ else }}
                   {{ .Message | markdown }}
                 {{ end }}
