@@ -39,6 +39,7 @@ lint: ## Run all the linters
 ci: lint test ## Run all the tests and code checks
 
 gen: ## Update generated code in the project
+	go get github.com/shurcooL/vfsgen
 	go generate ./...
 
 build: gen ## Build a beta version
