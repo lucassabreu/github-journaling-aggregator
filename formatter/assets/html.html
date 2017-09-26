@@ -1,11 +1,17 @@
-
 <html>
 <head>
   <title>{{ .Title }}</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
   <link rel="stylesheet" href="https://code.getmdl.io/1.3.0/material.deep_purple-indigo.min.css" />
   <style>
-    table td p {
+    table td img {
+      max-width: 100%;
+    }
+    table td {
+      white-space: normal;
+    }
+
+    table td * {
       font-size: 13px;
     }
   </style>
@@ -41,15 +47,25 @@
             <td class="mdl-data-table__cell--non-numeric message">
               <p>
                 {{ if eq (derefstr .Type) "PullRequestEvent" }}
-                Pull Request <a href="{{ $ghu }}/pull/{{ .Payload.PullRequest.Number }}">{{ .Payload.PullRequest.Title }}</a> {{ .Payload.Action }}
+                  Pull Request <a href="{{ $ghu }}/pull/{{ .Payload.PullRequest.Number }}">{{ .Payload.PullRequest.Title }}</a> {{ .Payload.Action }}
                 {{ else if eq (derefstr .Type) "PushEvent" }}
-                Pushed commit <a href="{{ $ghu }}/commit/{{ .Payload.SHA }}">{{ .Payload.Message | markdown }}</a>
+                  Pushed commit <a href="{{ $ghu }}/commit/{{ .Payload.SHA }}">{{ .Payload.Message | markdown }}</a>
                 {{ else if eq (derefstr .Type) "IssuesEvent" }}
-                Issue <a href="{{ $ghu }}/issues/{{ .Payload.Issue.Number }}">{{ .Payload.Issue.Title }} ({{ .Payload.Issue.Number }})</a> {{ .Payload.Action }}
+                  Issue <a href="{{ $ghu }}/issues/{{ .Payload.Issue.Number }}">{{ .Payload.Issue.Title }} ({{ .Payload.Issue.Number }})</a> {{ .Payload.Action }}
+                {{ else if eq (derefstr .Type) "CreateEvent" }}
+                  {{ if ne (derefstr .Payload.RefType) "repository" }}
+                      {{ .Payload.RefType | title }} <a href="{{ $ghu }}/tree/{{ .Payload.Ref }}">{{ .Payload.Ref }}</a> created
+                  {{ else }}
+                    {{ .Payload.RefType | title }} <a href="{{ $ghu }}/">{{ .Repo.Name }}</a> created
+                  {{ end }}
                 {{ else if eq (derefstr .Type) "PullRequestReviewCommentEvent" }}
-                {{ .Payload.Action | title }} <a href="{{ .Payload.Comment.HTMLURL }}">comment</a>
-                pull request <a href="{{ $ghu }}/issues/{{ .Payload.PullRequest.Number }}">{{ .Payload.PullRequest.Title }}</a> with:
-                {{ .Payload.Comment.Body | markdown }}
+                  {{ .Payload.Action | title }} <a href="{{ .Payload.Comment.HTMLURL }}">comment</a>
+                  pull request <a href="{{ $ghu }}/pull/{{ .Payload.PullRequest.Number }}">{{ .Payload.PullRequest.Title }}</a> with:
+                  {{ .Payload.Comment.Body | markdown }}
+                {{ else if eq (derefstr .Type) "IssueCommentEvent" }}
+                  {{ .Payload.Action | title }} <a href="{{ .Payload.Comment.HTMLURL }}">comment</a>
+                  in issue <a href="{{ $ghu }}/issues/{{ .Payload.Issue.Number }}">{{ .Payload.Issue.Title }}</a> with:
+                  {{ .Payload.Comment.Body | markdown }}
                 {{ else }}
                   {{ .Message | markdown }}
                 {{ end }}
