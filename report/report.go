@@ -157,6 +157,7 @@ func (r *Report) forward(e *github.Event) error {
 		})
 
 	case *github.IssuesEvent:
+
 		if p.Action == nil {
 			break
 		}
@@ -168,6 +169,27 @@ func (r *Report) forward(e *github.Event) error {
 				p,
 				fmt.Sprintf("%s the issue %s#%d (%s)", action, *e.Repo.Name, *p.Issue.Number, *p.Issue.Title),
 			})
+			break
+		}
+
+		if action == "unlabeled" || action == "labeled" {
+			r.format(Message{
+				*e,
+				action + " issue",
+				p,
+				fmt.Sprintf("%s the issue %s (%s#%d) with %s", action, *p.Issue.Title, *e.Repo.Name, *p.Issue.Number, p.Label),
+			})
+			break
+		}
+
+		if action == "milestoned" || action == "demilestoned" {
+			r.format(Message{
+				*e,
+				action + " issue",
+				p,
+				fmt.Sprintf("%s the issue %s (%s#%d) with %s", action, *p.Issue.Title, *e.Repo.Name, *p.Issue.Number, p.Issue.Milestone.Title),
+			})
+			break
 		}
 
 	case *github.PullRequestEvent:
