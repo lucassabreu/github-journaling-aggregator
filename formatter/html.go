@@ -3,6 +3,7 @@ package formatter
 import (
 	"fmt"
 	"io"
+	"regexp"
 	"strings"
 	"text/template"
 	"time"
@@ -17,6 +18,7 @@ type templateData struct {
 	Errors   []error
 }
 
+var issueWithRepoRegExp = regexp.MustCompile("[^ ]*/[^ ]#[0-9]*")
 var funcs = template.FuncMap{
 	"markdown": func(s string) string {
 		return string(blackfriday.MarkdownCommon([]byte(s)))
@@ -25,6 +27,9 @@ var funcs = template.FuncMap{
 		return *s
 	},
 	"title": strings.Title,
+	"date_to_str": func(t *time.Time) string {
+		return t.In(time.Local).Format("2006-01-02 15:04:05")
+	},
 }
 
 type HTML struct {
@@ -81,6 +86,7 @@ func (h *HTML) Close() {
 		Messages: h.messages,
 		Errors:   h.errors,
 	})
+
 	if err != nil {
 		panic(err)
 	}

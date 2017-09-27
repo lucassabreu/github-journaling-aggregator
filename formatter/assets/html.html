@@ -1,82 +1,90 @@
+<!DOCTYPE html>
 <html>
 <head>
   <title>{{ .Title }}</title>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
-  <link rel="stylesheet" href="https://code.getmdl.io/1.3.0/material.deep_purple-indigo.min.css" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta/css/bootstrap.min.css" integrity="sha384-/Y6pD6FV/Vv2HJnA6t+vslU6fwYXjCFtcEpHbNJ0lyAFsXTsjBbfaDjzALeQsN6M" crossorigin="anonymous" />
   <style>
-    table td img {
-      max-width: 100%;
-    }
-    table td {
-      white-space: normal;
+    body {
+      padding-top: 1.5rem;
+      padding-bottom: 1.5rem;
     }
 
-    table td * {
-      font-size: 13px;
+    .header {
+      margin-bottom: 2rem;
+    }
+
+    .table {
+      font-size: .8rem;
     }
   </style>
 </head>
 <body>
-<div class="mdl-layout mdl-layout--fixed-header mdl-js-layout mdl-color--grey-100">
-  <header class="mdl-layout__header mdl-layout__header--scroll mdl-color--grey-100 mdl-color-text--grey-800">
-    <div class="mdl-layout__header-row">
-      <span class="mdl-layout-title">{{ .Title }}</span>
+  <div class="container-fluid">
+    <div class="header clearfix">
+      <h3 class="text-muted">{{ .Title }}</h3>
     </div>
-  </header>
-  <main class="mdl-layout__content">
-    <ul class="mdl-list mdl-cell mdl-cell--12-col">
+
+    <ul class="list-group list-group-flush">
       {{ range .Errors }}
-        <li class="mdl-list__item">{{ .Error }}</li>
+        <li class="lit-group-item">{{ .Error }}</li>
       {{ end }}
     </ul>
 
-    <table class="mdl-data-table mdl-js-data-table mdl-shadow--2dp mdl-cell mdl-cell--12-col">
+    <table class="table table-hover table-responsive">
       <thead>
-        <th class="mdl-data-table__cell--non-numeric">Event Name</th>
-        <th class="mdl-data-table__cell--non-numeric">Type</th>
-        <th class="mdl-data-table__cell--non-numeric">Repo Name</th>
-        <th class="mdl-data-table__cell--non-numeric">Message</th>
+        <th>Repo Name</th>
+        <th style="width: 14em">When</th>
+        <th>Message</th>
       </thead>
       <tbody>
-        {{ range .Messages }}
+        {{- range .Messages -}}
+          {{ $ghu := print "http://github.com/" (derefstr .Repo.Name) }}
           <tr>
-            {{ $ghu := print "http://github.com/" (derefstr .Repo.Name) }}
-            <td class="mdl-data-table__cell--non-numeric"><p>{{ .EventName }}</p></td>
-            <td class="mdl-data-table__cell--non-numeric"><p>{{ .Type }}</p></td>
-            <td class="mdl-data-table__cell--non-numeric"><p>{{ .Repo.Name }}</p></td>
-            <td class="mdl-data-table__cell--non-numeric message">
-              <p>
-                {{ if eq (derefstr .Type) "PullRequestEvent" }}
-                  Pull Request <a href="{{ $ghu }}/pull/{{ .Payload.PullRequest.Number }}">{{ .Payload.PullRequest.Title }}</a> {{ .Payload.Action }}
-                {{ else if eq (derefstr .Type) "PushEvent" }}
-                  Pushed commit <a href="{{ $ghu }}/commit/{{ .Payload.SHA }}">{{ .Payload.Message | markdown }}</a>
-                {{ else if eq (derefstr .Type) "IssuesEvent" }}
-                  Issue <a href="{{ $ghu }}/issues/{{ .Payload.Issue.Number }}">{{ .Payload.Issue.Title }} ({{ .Payload.Issue.Number }})</a> {{ .Payload.Action }}
-                {{ else if eq (derefstr .Type) "CreateEvent" }}
-                  {{ if ne (derefstr .Payload.RefType) "repository" }}
-                      {{ .Payload.RefType | title }} <a href="{{ $ghu }}/tree/{{ .Payload.Ref }}">{{ .Payload.Ref }}</a> created
-                  {{ else }}
-                    {{ .Payload.RefType | title }} <a href="{{ $ghu }}/">{{ .Repo.Name }}</a> created
-                  {{ end }}
-                {{ else if eq (derefstr .Type) "PullRequestReviewCommentEvent" }}
-                  {{ .Payload.Action | title }} <a href="{{ .Payload.Comment.HTMLURL }}">comment</a>
-                  pull request <a href="{{ $ghu }}/pull/{{ .Payload.PullRequest.Number }}">{{ .Payload.PullRequest.Title }}</a> with:
-                  {{ .Payload.Comment.Body | markdown }}
-                {{ else if eq (derefstr .Type) "IssueCommentEvent" }}
-                  {{ .Payload.Action | title }} <a href="{{ .Payload.Comment.HTMLURL }}">comment</a>
-                  in issue <a href="{{ $ghu }}/issues/{{ .Payload.Issue.Number }}">{{ .Payload.Issue.Title }}</a> with:
-                  {{ .Payload.Comment.Body | markdown }}
-                {{ else }}
-                  {{ .Message | markdown }}
-                {{ end }}
-              </p>
+            <td>{{ .Repo.Name }}</td>
+            <td>{{ .CreatedAt | date_to_str }}</td>
+            <td>
+              {{ if eq (derefstr .Type) "PullRequestEvent" -}}
+                Pull Request <a href="{{ $ghu }}/pull/{{ .Payload.PullRequest.Number }}">{{ .Payload.PullRequest.Title }}</a>
+                {{ if eq (derefstr .Payload.Action) "closed" -}}
+                  {{ if .Payload.PullRequest.Merged -}} merged {{- else -}} canceled {{- end }}
+                {{- else -}}
+                  {{ .Payload.Action }}
+                {{- end }}
+                {{ if eq (derefstr .Payload.Action) "opened" -}}
+                  {{- markdown .Payload.PullRequest.Body -}}
+                {{- end }}
+              {{- else if eq (derefstr .Type) "PushEvent" -}}
+                Pushed commit <a href="{{ $ghu }}/commit/{{ .Payload.SHA }}">{{- markdown .Payload.Message -}}</a>
+              {{- else if eq (derefstr .Type) "IssuesEvent" -}}
+                Issue <a href="{{ $ghu }}/issues/{{ .Payload.Issue.Number }}">{{ .Payload.Issue.Title }} ({{ .Payload.Issue.Number }})</a> {{ .Payload.Action }}
+              {{- else if eq (derefstr .Type) "CreateEvent" -}}
+                {{ if ne (derefstr .Payload.RefType) "repository" -}}
+                    {{ .Payload.RefType | title }} <a href="{{ $ghu }}/tree/{{ .Payload.Ref }}">{{ .Payload.Ref }}</a> created
+                {{- else -}}
+                  {{ .Payload.RefType | title }} <a href="{{ $ghu }}/">{{ .Repo.Name }}</a> created
+                {{- end }}
+              {{- else if eq (derefstr .Type) "PullRequestReviewCommentEvent" -}}
+                {{ .Payload.Action | title }} <a href="{{ .Payload.Comment.HTMLURL }}">comment</a>
+                pull request <a href="{{ $ghu }}/pull/{{ .Payload.PullRequest.Number }}">{{ .Payload.PullRequest.Title }}</a> with:
+                {{- markdown .Payload.Comment.Body -}}
+              {{- else if eq (derefstr .Type) "IssueCommentEvent" -}}
+                {{ .Payload.Action | title }} <a href="{{ .Payload.Comment.HTMLURL }}">comment</a>
+                in issue <a href="{{ $ghu }}/issues/{{ .Payload.Issue.Number }}">{{ .Payload.Issue.Title }}</a> with:
+                {{- markdown .Payload.Comment.Body -}}
+              {{- else -}}
+                {{- markdown .Message -}}
+              {{- end }}
             </td>
           </tr>
-        {{ end }}
+        {{- end -}}
       </tbody>
     </table>
-  </main>
-</div>
-<script defer src="https://code.getmdl.io/1.3.0/material.min.js"></script>
+  </div>
+  <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.11.0/umd/popper.min.js" integrity="sha384-b/U6ypiBEHpOf/4+1nzFpr53nxSS+GLCkfwBdFNTxtclqqenISfwAzpKaMNFNmj4" crossorigin="anonymous"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta/js/bootstrap.min.js" integrity="sha384-h0AbiXch4ZDo7tp9hKZ4TsHbi047NrKGLO3SEJAg45jXxnGIfYzk4Si90RDIqNm1" crossorigin="anonymous"></script>
 </body>
 </html>
